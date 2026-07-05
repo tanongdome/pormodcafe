@@ -1,0 +1,1363 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบสะสมแต้มสมาชิก</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Prompt:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- ตั้งค่า API_URL / API_KEY ที่ไฟล์นี้ -->
+  <script src="config.js"></script>
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --secondary: #8b5cf6;
+      --accent: #a855f7;
+      --light: #f8fafc;
+      --dark: #1e293b;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #3b82f6;
+    }
+
+    body {
+      font-family: 'Kanit', sans-serif;
+      min-height: 100vh;
+      color: var(--dark);
+      background-image: url('https://images.unsplash.com/photo-1521017432530-89d5b3757dcb?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(224, 231, 255, 0.8);
+      backdrop-filter: blur(4px);
+      z-index: -1;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+      transition: all 0.3s ease;
+    }
+
+    .glass-card:hover {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+    }
+
+    .stamp-card {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .stamp-filled {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      transform: scale(1.05);
+      box-shadow: 0 4px 6px rgba(99, 102, 241, 0.3);
+    }
+
+    .stamp-empty {
+      background: rgba(99, 102, 241, 0.1);
+      border: 2px dashed rgba(99, 102, 241, 0.3);
+      color: var(--primary);
+    }
+
+    .stamp-free {
+      background: linear-gradient(135deg, #fde047, #facc15);
+      color: #92400e;
+      box-shadow: 0 4px 6px rgba(253, 224, 71, 0.4);
+      animation: pulse 1.5s infinite;
+      font-weight: 700;
+    }
+
+    .stamp-claimed {
+      background: linear-gradient(135deg, var(--success), #22d3ee);
+      color: white;
+      box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      border: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, var(--danger), #dc2626);
+      color: white;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--success), #059669);
+      color: white;
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, var(--warning), #d97706);
+      color: white;
+    }
+
+    .btn-outline {
+      background: rgba(255,255,255,0.9);
+      color: var(--primary);
+      border: 2px solid rgba(99, 102, 241, 0.3);
+    }
+    .btn-outline:hover {
+      border-color: var(--primary);
+      transform: translateY(-1px);
+    }
+
+    .qr-scanner-container {
+      position: relative;
+      aspect-ratio: 1;
+      max-width: 280px;
+      margin: 0 auto 20px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid rgba(99, 102, 241, 0.2);
+    }
+
+    .qr-scanner-container::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px;
+      height: 200px;
+      border: 2px solid rgba(99, 102, 241, 0.6);
+      border-radius: 8px;
+      pointer-events: none;
+    }
+
+    .tab-active {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
+    }
+
+    .tab-inactive {
+      background: rgba(255, 255, 255, 0.8);
+      color: var(--primary);
+    }
+
+    .progress-ring {
+      position: relative;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: conic-gradient(
+        from 0deg,
+        var(--primary) 0%,
+        var(--primary) var(--progress),
+        rgba(99, 102, 241, 0.1) var(--progress),
+        rgba(99, 102, 241, 0.1) 100%
+      );
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .progress-ring::before {
+      content: '';
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: white;
+    }
+
+    .member-card {
+      transition: all 0.2s ease;
+      border-left: 4px solid var(--primary);
+      border-radius: 12px;
+    }
+
+    .member-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+    }
+
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      padding: 12px 20px;
+      border-radius: 12px;
+      color: white;
+      font-weight: 500;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      animation: fadeIn 0.3s;
+      max-width: 350px;
+    }
+
+    .toast-success {
+      background: linear-gradient(135deg, var(--success), #22d3ee);
+    }
+
+    .toast-error {
+      background: linear-gradient(135deg, var(--danger), #dc2626);
+    }
+
+    .toast-info {
+      background: linear-gradient(135deg, var(--info), #60a5fa);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    /* Connection status pill */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.85);
+      color: #64748b;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; }
+    .status-dot.online { background: var(--success); box-shadow: 0 0 0 3px rgba(16,185,129,0.2); }
+    .status-dot.error { background: var(--danger); box-shadow: 0 0 0 3px rgba(239,68,68,0.2); }
+
+    /* Loading overlay for API calls */
+    #loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(30, 41, 59, 0.35);
+      backdrop-filter: blur(2px);
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    #loading-overlay .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid rgba(255,255,255,0.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===================================================
+     *  In-app browser modal popup
+     * =================================================== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(3px);
+      z-index: 3000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      animation: modalFadeIn 0.25s ease forwards;
+    }
+    .modal-overlay.hidden { display: none; }
+
+    @keyframes modalFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-card {
+      position: relative;
+      background: #ffffff;
+      border-radius: 24px;
+      padding: 32px 28px 24px;
+      max-width: 360px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+      transform: scale(0.85) translateY(10px);
+      opacity: 0;
+      animation: modalPopIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s forwards;
+    }
+
+    @keyframes modalPopIn {
+      to { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      color: #64748b;
+      border: none;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .modal-close:hover { background: #e2e8f0; color: #334155; }
+
+    .modal-icon-stack {
+      position: relative;
+      width: 84px;
+      height: 84px;
+      margin: 0 auto 20px;
+    }
+    .modal-icon-circle {
+      width: 84px;
+      height: 84px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 42px;
+      color: white;
+      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+      animation: modalIconBob 2s ease-in-out infinite;
+    }
+    .modal-icon-badge {
+      position: absolute;
+      bottom: -4px;
+      right: -4px;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--warning);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      border: 3px solid white;
+      box-shadow: 0 4px 8px rgba(245, 158, 11, 0.4);
+    }
+
+    @keyframes modalIconBob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    .modal-title {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 8px;
+    }
+
+    .modal-desc {
+      font-size: 14px;
+      color: #64748b;
+      line-height: 1.6;
+      margin-bottom: 22px;
+    }
+
+    .modal-cta-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .modal-secondary-btn {
+      width: 100%;
+      padding: 10px;
+      border-radius: 12px;
+      font-size: 13px;
+      color: #94a3b8;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      margin-bottom: 16px;
+      transition: color 0.15s ease;
+    }
+    .modal-secondary-btn:hover { color: #64748b; text-decoration: underline; }
+
+    .modal-hint {
+      font-size: 12px;
+      color: #94a3b8;
+      background: #f8fafc;
+      border-radius: 10px;
+      padding: 10px 12px;
+      line-height: 1.6;
+      text-align: left;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+    .modal-hint i.bx-info-circle {
+      flex-shrink: 0;
+      margin-top: 1px;
+      color: var(--primary);
+    }
+    .modal-hint-icon {
+      display: inline-flex;
+      vertical-align: middle;
+      background: #e2e8f0;
+      border-radius: 6px;
+      padding: 1px 4px;
+      margin: 0 2px;
+    }
+
+    /* Print styles - only show the customer card cleanly */
+    @media print {
+      body::before, header, nav, #toast-container, .no-print, #loading-overlay {
+        display: none !important;
+      }
+      body { background: white !important; }
+      #panel-customer > *:not(#customer-info) { display: none !important; }
+      #customer-info { box-shadow: none !important; border: 1px solid #ddd; }
+    }
+  </style>
+</head>
+<body class="min-h-screen py-6 px-4">
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <div id="loading-overlay"><div class="spinner"></div></div>
+
+  <!-- In-app browser popup: เด้งเตือนให้เปิด Chrome/เบราว์เซอร์นอก เมื่อเปิดผ่าน Telegram/LINE/FB/IG -->
+  <div id="inapp-browser-modal" class="modal-overlay hidden no-print">
+    <div class="modal-card">
+      <button onclick="closeInAppBrowserModal()" class="modal-close" aria-label="ปิด">
+        <i class="bx bx-x"></i>
+      </button>
+
+      <div class="modal-icon-stack">
+        <div class="modal-icon-circle">
+          <i class="bx bxl-chrome"></i>
+        </div>
+        <div class="modal-icon-badge">
+          <i class="bx bx-qr-scan"></i>
+        </div>
+      </div>
+
+      <h3 class="modal-title">เปิดในเบราว์เซอร์เพื่อสแกน QR</h3>
+      <p class="modal-desc" id="inapp-modal-text">
+        เปิดผ่านแอปแชท กล้องอาจใช้งานไม่ได้ กดปุ่มด้านล่างเพื่อเปิดหน้านี้ใน Chrome
+      </p>
+
+      <button onclick="openInExternalBrowser()" class="btn-primary modal-cta-btn">
+        <i class="bx bxl-chrome text-xl"></i>
+        เปิดใน Chrome
+      </button>
+
+      <button onclick="closeInAppBrowserModal()" class="modal-secondary-btn">
+        ดำเนินการต่อโดยไม่ใช้กล้อง
+      </button>
+
+      <div class="modal-hint">
+        <i class="bx bx-info-circle"></i>
+        หากปุ่มไม่เปิด Chrome ให้ กดปุ่ม
+        <span class="modal-hint-icon"><i class="bx bx-dots-vertical-rounded"></i></span>
+        มุมขวาบนของแอป แล้วเลือก "เปิดในเบราว์เซอร์"
+      </div>
+    </div>
+  </div>
+
+  <header class="text-center mb-8 relative">
+    <div class="max-w-2xl mx-auto">
+      <div class="w-24 h-24 bg-white/90 rounded-full flex items-center justify-center mx-auto mb-4 shadow-md">
+        <img src="https://lh3.googleusercontent.com/d/1uasgFgkER-ja4wgiEMJYvNxigMySlgt7" alt="Coffee Cup Logo" class="w-18 h-18">
+      </div>
+      <h1 class="text-3xl md:text-4xl font-bold bg-clip-text bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] text-transparent mb-2">
+        สะสมแต้มสมาชิก PORMOD CAFE
+      </h1>
+      <p class="text-gray-600 text-lg mb-2">
+        สแกน QR โค้ดเพื่อสะสมแต้มและรับส่วนลดพิเศษ
+      </p>
+      <div class="status-pill mx-auto w-fit">
+        <span id="status-dot" class="status-dot"></span>
+        <span id="status-text">กำลังเชื่อมต่อฐานข้อมูล...</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="max-w-xl mx-auto mb-8 no-print">
+    <div class="bg-white/90 rounded-xl p-1 flex gap-1 shadow-sm">
+      <button onclick="showTab('customer')" id="tab-customer" class="flex-1 py-3 px-4 rounded-lg font-medium transition-all tab-active">
+        <i class="bx bx-user-circle mr-2 text-lg"></i> ลูกค้า
+      </button>
+      <button onclick="showTab('admin')" id="tab-admin" class="flex-1 py-3 px-4 rounded-lg font-medium transition-all tab-inactive">
+        <i class="bx bx-dashboard mr-2 text-lg"></i> แดชบอร์ด
+      </button>
+    </div>
+  </nav>
+
+  <main class="max-w-xl mx-auto space-y-6">
+    <div id="panel-customer">
+      <!-- QR Scanner Section -->
+      <div class="glass-card p-6 mb-6 no-print">
+        <div class="text-center">
+          <h3 class="text-xl font-bold text-gray-800 mb-4">สแกน QR โค้ด</h3>
+          <p class="text-gray-600 mb-6">วาง QR โค้ดให้อยู่ภายในกรอบเพื่อสแกน</p>
+
+          <div class="qr-scanner-container mb-4">
+            <div id="scanner-container" class="hidden w-full h-full"></div>
+          </div>
+
+          <button id="scanner-btn" onclick="toggleScanner()" class="btn-primary w-full py-3 px-6 rounded-lg font-semibold text-lg shadow-lg transition-all flex items-center justify-center gap-3 mx-auto">
+            <i class="bx bx-qr-scan text-xl"></i>
+            <span id="scanner-btn-text">เปิดสแกนเนอร์</span>
+          </button>
+          <p class="text-xs text-gray-400 mt-3">* การสแกนกล้องต้องเปิดผ่าน HTTPS และอนุญาตสิทธิ์กล้องในเบราว์เซอร์</p>
+          <button onclick="showInAppBrowserBanner()" class="text-xs text-[var(--primary)] underline mt-2">
+            เปิดผ่านแอปแชท (Telegram/LINE) แล้วสแกนไม่ได้?
+          </button>
+        </div>
+      </div>
+
+      <!-- Registration Section (hidden by default) -->
+      <div id="register-section" class="glass-card p-6 hidden fade-in mb-6 no-print">
+        <div class="text-center mb-6">
+          <div class="w-16 h-16 bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="bx bx-user-plus text-white text-2xl"></i>
+          </div>
+          <h3 class="text-xl font-bold text-gray-800">ลงทะเบียนสมาชิกใหม่</h3>
+          <p class="text-gray-600">กรอกข้อมูลเพื่อเริ่มสะสมแต้ม</p>
+        </div>
+
+        <form id="register-form" class="space-y-4">
+          <div>
+            <label class="block text-gray-700 mb-1">ชื่อ-สกุล</label>
+            <div class="relative">
+              <i class="bx bx-user absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+              <input id="reg-name" type="text" placeholder="เช่น นาย สมชาย แซ่หลี"
+                     class="w-full pl-10 pr-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[var(--primary)] focus:outline-none transition">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-gray-700 mb-1">เบอร์โทรศัพท์</label>
+            <div class="relative">
+              <i class="bx bx-phone absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+              <input id="reg-phone" type="tel" placeholder="เช่น 0812345678"
+                     class="w-full pl-10 pr-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[var(--primary)] focus:outline-none transition">
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary w-full py-3 rounded-lg font-semibold text-lg shadow-lg transition-all">
+            <i class="bx bx-user-plus mr-2"></i> ลงทะเบียน & เก็บแต้มแรก
+          </button>
+        </form>
+      </div>
+
+      <!-- Customer Info Section (hidden by default) -->
+      <div id="customer-info" class="glass-card p-6 hidden mb-6">
+        <div class="flex flex-col items-center mb-6">
+          <div class="w-20 h-20 bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] rounded-full flex items-center justify-center text-white text-3xl mb-3">
+            <i class="bx bx-user"></i>
+          </div>
+          <h3 id="cust-name" class="font-bold text-xl text-gray-800 mb-1"></h3>
+          <p id="cust-phone" class="text-[var(--primary)] font-medium mb-4"></p>
+
+          <div class="progress-ring stamp-progress mb-4" data-progress="0%">
+            <span class="text-sm font-semibold text-[var(--primary)]">0/9</span>
+          </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 mb-6">
+          <h4 class="text-center font-semibold text-gray-700 mb-4 flex items-center justify-center">
+            <i class="bx bx-gift mr-2 text-[var(--primary)]"></i> บัตรสะสมแต้มของคุณ
+          </h4>
+
+          <div id="stamp-grid" class="grid grid-cols-5 gap-3 justify-items-center mb-6"></div>
+
+          <div id="claim-section" class="hidden text-center">
+            <button onclick="claimReward()" class="btn-warning w-full py-3 px-6 rounded-lg font-bold text-lg shadow-lg transition-all transform hover:scale-105">
+              <i class="bx bx-gift mr-2"></i> รับสิทธิ์ฟรี ครั้งที่ 10!
+            </button>
+          </div>
+
+          <div id="stamp-success" class="hidden text-center">
+            <div class="flex items-center justify-center gap-2">
+              <i class="bx bx-check-circle text-green-500 text-2xl"></i>
+              <p class="text-green-600 font-semibold text-lg" id="stamp-success-msg"></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-center pt-4 mb-4">
+          <p class="text-gray-600 mb-2">สะสมครบ 9 แต้ม รับสิทธิ์พิเศษ!</p>
+          <div class="w-full bg-gray-200 rounded-full h-2.5">
+            <div id="progress-bar" class="bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] h-2.5 rounded-full" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Export / Print actions -->
+        <div class="grid grid-cols-2 gap-3 no-print">
+          <button onclick="downloadMemberPDF()" id="btn-pdf" class="btn-outline py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2">
+            <i class="bx bxs-file-pdf"></i> ดาวน์โหลดบัตร PDF
+          </button>
+          <button onclick="window.print()" class="btn-outline py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2">
+            <i class="bx bx-printer"></i> พิมพ์บัตร
+          </button>
+        </div>
+      </div>
+
+      <!-- Manual Search Section -->
+      <div class="glass-card p-6 no-print">
+        <div class="text-center mb-6">
+          <div class="w-16 h-16 bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="bx bx-search-alt text-white text-2xl"></i>
+          </div>
+          <h3 class="text-xl font-bold text-gray-800">ค้นหาสมาชิก</h3>
+          <p class="text-gray-600">กรอกเบอร์โทรศัพท์เพื่อค้นหาข้อมูลสมาชิก</p>
+        </div>
+
+        <form id="search-form" class="flex gap-2">
+          <div class="relative flex-1">
+            <i class="bx bx-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            <input id="search-input" type="text" placeholder="เช่น 0812345678"
+                   class="w-full pl-10 pr-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[var(--primary)] focus:outline-none transition">
+          </div>
+          <button type="submit" class="btn-primary px-6 py-3 rounded-lg font-semibold shadow-lg whitespace-nowrap">
+            <i class="bx bx-search text-xl"></i> ค้นหา
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Admin Tab -->
+    <div id="panel-admin" class="hidden space-y-6 no-print">
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-2 gap-4">
+        <div class="glass-card p-4 text-center">
+          <div class="text-3xl font-bold text-[var(--primary)]" id="stat-members">0</div>
+          <p class="text-gray-600 text-sm mt-1">สมาชิกทั้งหมด</p>
+        </div>
+        <div class="glass-card p-4 text-center">
+          <div class="text-3xl font-bold text-[var(--secondary)]" id="stat-stamps">0</div>
+          <p class="text-gray-600 text-sm mt-1">แต้มที่สะสม</p>
+        </div>
+        <div class="glass-card p-4 text-center">
+          <div class="text-3xl font-bold text-yellow-500" id="stat-rewards">0</div>
+          <p class="text-gray-600 text-sm mt-1">สิทธิ์ที่แลกไป</p>
+        </div>
+        <div class="glass-card p-4 text-center">
+          <div class="text-3xl font-bold text-green-500" id="stat-active">0</div>
+          <p class="text-gray-600 text-sm mt-1">สมาชิกแอคทีฟ</p>
+        </div>
+      </div>
+
+      <!-- Member List -->
+      <div class="glass-card p-6">
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <h3 class="text-xl font-bold text-gray-800">รายชื่อสมาชิก</h3>
+          <div class="flex items-center gap-3">
+            <div class="flex items-center text-gray-600">
+              <i class="bx bx-user mr-1"></i>
+              <span id="stat-members-2">0</span> คน
+            </div>
+            <button onclick="downloadReportPDF()" id="btn-report-pdf" class="btn-outline py-1.5 px-3 rounded-lg text-sm flex items-center gap-1">
+              <i class="bx bxs-file-pdf"></i> ออกรายงาน PDF
+            </button>
+          </div>
+        </div>
+
+        <div id="member-list" class="space-y-3 max-h-[400px] overflow-y-auto pr-2"></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let allData = [];
+    let currentCustomer = null;
+    let scannerActive = false;
+    let html5QrCode = null;
+
+    const SHOP_QR_VALUE = 'LOYALTY_SHOP_STAMP';
+
+    /* ==========================================================
+     *  In-app browser detection (Telegram / LINE / Facebook / Instagram)
+     * ========================================================== */
+    function detectBrowserEnv() {
+      const ua = navigator.userAgent || '';
+      return {
+        isTelegram: /Telegram/i.test(ua) ||
+          !!window.TelegramWebviewProxy ||
+          !!window.Telegram ||
+          !!window.TelegramWebviewProxyProto,
+        isLine: /\bLine\//i.test(ua),
+        isFacebook: /FBAN|FBAV/i.test(ua),
+        isInstagram: /Instagram/i.test(ua),
+        isAndroid: /Android/i.test(ua),
+        isIOS: /iPhone|iPad|iPod/i.test(ua)
+      };
+    }
+
+    function isInAppBrowser() {
+      const d = detectBrowserEnv();
+      return d.isTelegram || d.isLine || d.isFacebook || d.isInstagram;
+    }
+
+    function getInAppBrowserName() {
+      const d = detectBrowserEnv();
+      if (d.isTelegram) return 'Telegram';
+      if (d.isLine) return 'LINE';
+      if (d.isFacebook) return 'Facebook';
+      if (d.isInstagram) return 'Instagram';
+      return 'แอปที่ใช้อยู่';
+    }
+
+    function showInAppBrowserBanner() {
+      const modal = document.getElementById('inapp-browser-modal');
+      const text = document.getElementById('inapp-modal-text');
+      text.textContent = `เปิดผ่าน ${getInAppBrowserName()} กล้องอาจใช้งานไม่ได้ กดปุ่มด้านล่างเพื่อเปิดหน้านี้ใน Chrome`;
+      modal.classList.remove('hidden');
+    }
+
+    function closeInAppBrowserModal() {
+      document.getElementById('inapp-browser-modal').classList.add('hidden');
+    }
+
+    function openInExternalBrowser() {
+      const url = window.location.href;
+      const d = detectBrowserEnv();
+
+      if (d.isAndroid) {
+        const strippedUrl = url.replace(/^https?:\/\//, '');
+        const intentUrl = 'intent://' + strippedUrl + '#Intent;scheme=https;package=com.android.chrome;end';
+        window.location.href = intentUrl;
+        setTimeout(() => { window.open(url, '_blank'); }, 600);
+      } else if (d.isIOS) {
+        window.location.href = url.replace(/^https/i, 'x-safari-https');
+        setTimeout(() => { window.open(url, '_blank'); }, 800);
+      } else {
+        window.open(url, '_blank');
+      }
+    }
+
+    /* ==========================================================
+     *  Loading overlay helpers
+     * ========================================================== */
+    let pendingCalls = 0;
+    function showLoading() {
+      pendingCalls++;
+      document.getElementById('loading-overlay').style.display = 'flex';
+    }
+    function hideLoading() {
+      pendingCalls = Math.max(0, pendingCalls - 1);
+      if (pendingCalls === 0) document.getElementById('loading-overlay').style.display = 'none';
+    }
+
+    /* ==========================================================
+     *  API layer: เรียก Apps Script Web App ผ่าน fetch()
+     *  (ใช้ text/plain เป็น Content-Type ตอน POST เพื่อเลี่ยง
+     *   CORS preflight ซึ่ง Apps Script Web App ไม่รองรับ)
+     * ========================================================== */
+    async function callApi(action, payload = {}, method = 'POST') {
+      const cfg = window.APP_CONFIG || {};
+      if (!cfg.API_URL || cfg.API_URL.indexOf('REPLACE_WITH_YOUR_DEPLOYMENT_ID') !== -1) {
+        throw new Error('ยังไม่ได้ตั้งค่า API_URL ใน config.js กรุณา deploy Apps Script แล้วใส่ URL ก่อนใช้งาน');
+      }
+
+      showLoading();
+      try {
+        let res;
+        if (method === 'GET') {
+          const params = new URLSearchParams({ action, apiKey: cfg.API_KEY || '' });
+          Object.keys(payload).forEach(k => {
+            if (payload[k] !== undefined && payload[k] !== null) params.set(k, payload[k]);
+          });
+          res = await fetch(`${cfg.API_URL}?${params.toString()}`);
+        } else {
+          res = await fetch(cfg.API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action, payload, apiKey: cfg.API_KEY || '' })
+          });
+        }
+
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์');
+        return json.data;
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function setStatus(state, text) {
+      const dot = document.getElementById('status-dot');
+      const label = document.getElementById('status-text');
+      dot.className = 'status-dot' + (state ? ' ' + state : '');
+      label.textContent = text;
+    }
+
+    /* ==========================================================
+     *  dataSdk: เชื่อมกับ Google Sheets ผ่าน Apps Script Web App API
+     * ========================================================== */
+    let dataChangeHandler = null;
+
+    window.dataSdk = {
+      async init(handler) {
+        dataChangeHandler = handler;
+        try {
+          const data = await callApi('getAllMembers', {}, 'GET');
+          handler.onDataChanged(data);
+          setStatus('online', 'เชื่อมต่อฐานข้อมูลสำเร็จ');
+          return { isOk: true };
+        } catch (e) {
+          setStatus('error', 'เชื่อมต่อฐานข้อมูลไม่สำเร็จ');
+          return { isOk: false, error: e };
+        }
+      },
+      async create(record) {
+        try {
+          const result = await callApi('createMember', record, 'POST');
+          const data = await callApi('getAllMembers', {}, 'GET');
+          dataChangeHandler.onDataChanged(data);
+          return { isOk: true, data: result };
+        } catch (e) {
+          return { isOk: false, error: e };
+        }
+      },
+      async update(record) {
+        try {
+          const result = await callApi('updateMember', record, 'POST');
+          const data = await callApi('getAllMembers', {}, 'GET');
+          dataChangeHandler.onDataChanged(data);
+          return { isOk: true, data: result };
+        } catch (e) {
+          return { isOk: false, error: e };
+        }
+      },
+      async remove(phone) {
+        try {
+          await callApi('deleteMember', { phone }, 'POST');
+          const data = await callApi('getAllMembers', {}, 'GET');
+          dataChangeHandler.onDataChanged(data);
+          return { isOk: true };
+        } catch (e) {
+          return { isOk: false, error: e };
+        }
+      }
+    };
+
+    /* ==========================================================
+     *  Toast + Tabs
+     * ========================================================== */
+    function showToast(msg, type = 'success') {
+      const toastContainer = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = msg;
+      toastContainer.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-x-4');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    function showTab(tab) {
+      document.getElementById('panel-customer').classList.toggle('hidden', tab !== 'customer');
+      document.getElementById('panel-admin').classList.toggle('hidden', tab !== 'admin');
+
+      document.getElementById('tab-customer').className = `flex-1 py-3 px-4 rounded-lg font-medium transition-all ${tab === 'customer' ? 'tab-active' : 'tab-inactive'}`;
+      document.getElementById('tab-admin').className = `flex-1 py-3 px-4 rounded-lg font-medium transition-all ${tab === 'admin' ? 'tab-active' : 'tab-inactive'}`;
+
+      if (tab === 'admin') updateDashboard();
+    }
+
+    /* ==========================================================
+     *  Stamp logic
+     * ========================================================== */
+    function getStampCount(record) {
+      let count = 0;
+      for (let i = 1; i <= 9; i++) {
+        if (record[`stamp_${i}`] === '1') count++;
+      }
+      return count;
+    }
+
+    function renderStamps(record) {
+      const grid = document.getElementById('stamp-grid');
+      grid.innerHTML = '';
+
+      const stamps = getStampCount(record);
+      const progress = (stamps / 9) * 100;
+      document.querySelector('.progress-ring').style.setProperty('--progress', `${progress}%`);
+      document.getElementById('progress-bar').style.width = `${progress}%`;
+
+      for (let i = 1; i <= 9; i++) {
+        const div = document.createElement('div');
+        div.className = `stamp-card ${record[`stamp_${i}`] === '1' ? 'stamp-filled' : 'stamp-empty'}`;
+        div.textContent = record[`stamp_${i}`] === '1' ? '✓' : i;
+        grid.appendChild(div);
+      }
+
+      const free = document.createElement('div');
+      const claimed = record.free_reward && record.free_reward.startsWith('claimed');
+
+      if (claimed) {
+        free.className = 'stamp-card stamp-claimed reward-badge';
+        free.innerHTML = '<i class="bx bx-gift"></i>';
+      }
+      else if (stamps >= 9) {
+        free.className = 'stamp-card stamp-free reward-badge';
+        free.textContent = 'FREE';
+      }
+      else {
+        free.className = 'stamp-card stamp-empty';
+        free.textContent = '10';
+      }
+
+      grid.appendChild(free);
+      document.getElementById('claim-section').classList.toggle('hidden', stamps < 9 || claimed);
+      document.querySelector('.progress-ring span').textContent = `${stamps}/9`;
+    }
+
+    function displayCustomer(record) {
+      currentCustomer = record;
+      document.getElementById('cust-name').textContent = record.customer_name;
+      document.getElementById('cust-phone').textContent = record.phone;
+      document.getElementById('customer-info').classList.remove('hidden');
+      document.getElementById('register-section').classList.add('hidden');
+      renderStamps(record);
+    }
+
+    async function addStamp(record) {
+      let nextSlot = null;
+      for (let i = 1; i <= 9; i++) {
+        if (record[`stamp_${i}`] !== '1') {
+          nextSlot = i;
+          break;
+        }
+      }
+
+      if (!nextSlot) {
+        showToast('คุณสะสมแต้มครบ 9 แต้มแล้ว! กดรับสิทธิ์ฟรีได้เลย', 'info');
+        return;
+      }
+
+      const updated = { ...record };
+      updated[`stamp_${nextSlot}`] = '1';
+      updated.total_stamps = getStampCount(updated);
+      updated.last_updated = new Date().toISOString();
+
+      const result = await window.dataSdk.update(updated);
+      if (result.isOk) {
+        showToast(`สะสมแต้มครั้งที่ ${nextSlot} สำเร็จ!`);
+        const msg = document.getElementById('stamp-success-msg');
+        msg.textContent = `✅ เก็บแต้มครั้งที่ ${nextSlot} แล้ว!`;
+        document.getElementById('stamp-success').classList.remove('hidden');
+        setTimeout(() => document.getElementById('stamp-success').classList.add('hidden'), 3000);
+      } else {
+        showToast('เกิดข้อผิดพลาดในการอัปเดต', 'error');
+      }
+    }
+
+    /* ==========================================================
+     *  QR Scanner
+     * ========================================================== */
+    async function toggleScanner() {
+      const container = document.getElementById('scanner-container');
+      const btnText = document.getElementById('scanner-btn-text');
+      const btn = document.getElementById('scanner-btn');
+
+      if (!scannerActive) {
+        if (isInAppBrowser()) {
+          showInAppBrowserBanner();
+          return;
+        }
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          showToast('เบราว์เซอร์นี้ไม่รองรับการเข้าถึงกล้อง (ต้องเปิดผ่าน HTTPS)', 'error');
+          return;
+        }
+
+        btn.disabled = true;
+        try {
+          const testStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          testStream.getTracks().forEach(t => t.stop());
+        } catch (permErr) {
+          btn.disabled = false;
+          console.error('getUserMedia permission error:', permErr);
+          if (/NotAllowedError|Permission/i.test(permErr.name || '')) {
+            showInAppBrowserBanner();
+          } else if (/NotFoundError/i.test(permErr.name || '')) {
+            showToast('ไม่พบกล้องบนอุปกรณ์นี้', 'error');
+          } else {
+            showToast('ไม่สามารถขอสิทธิ์กล้องได้: ' + (permErr.message || permErr), 'error');
+          }
+          return;
+        }
+        btn.disabled = false;
+
+        container.classList.remove('hidden');
+        html5QrCode = new Html5Qrcode('scanner-container');
+
+        html5QrCode.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          onQrCodeSuccess,
+          (scanErrorMessage) => {
+            // เฟรมที่ยังหา QR ไม่เจอ - เกิดขึ้นปกติหลายครั้ง/วินาที ไม่ต้องแจ้งเตือนผู้ใช้
+          }
+        ).then(() => {
+          scannerActive = true;
+          btnText.textContent = 'ปิดสแกนเนอร์';
+          btn.classList.remove('btn-primary');
+          btn.classList.add('btn-danger');
+        }).catch((err) => {
+          console.error('Camera start error:', err);
+          container.classList.add('hidden');
+          const reason = (err && err.message) ? err.message : String(err);
+          if (/NotAllowedError|Permission/i.test(reason)) {
+            showInAppBrowserBanner();
+          } else if (/NotFoundError/i.test(reason)) {
+            showToast('ไม่พบกล้องบนอุปกรณ์นี้', 'error');
+          } else {
+            showToast('ไม่สามารถเปิดกล้องได้: ' + reason, 'error');
+          }
+        });
+      } else {
+        stopScanner();
+      }
+    }
+
+    function stopScanner() {
+      if (html5QrCode && scannerActive) {
+        html5QrCode.stop().then(() => {
+          document.getElementById('scanner-container').classList.add('hidden');
+          scannerActive = false;
+          document.getElementById('scanner-btn-text').textContent = 'เปิดสแกนเนอร์';
+          const btn = document.getElementById('scanner-btn');
+          btn.classList.remove('btn-danger');
+          btn.classList.add('btn-primary');
+        });
+      }
+    }
+
+    function onQrCodeSuccess(decodedText) {
+      stopScanner();
+      const trimmed = decodedText.trim();
+
+      if (trimmed === SHOP_QR_VALUE || trimmed.startsWith('LOYALTY')) {
+        const phoneInput = document.getElementById('search-input');
+        const phone = phoneInput.value.trim();
+
+        if (phone) {
+          handleCustomerScan(phone);
+        } else {
+          document.getElementById('register-section').classList.remove('hidden');
+          document.getElementById('customer-info').classList.add('hidden');
+          showToast('สแกนสำเร็จ! กรุณาลงทะเบียนหรือกรอกเบอร์โทร');
+        }
+      } else {
+        handleCustomerScan(trimmed);
+      }
+    }
+
+    function handleCustomerScan(phone) {
+      const found = allData.find(r => r.phone === phone);
+      if (found) {
+        displayCustomer(found);
+        addStamp(found);
+      } else {
+        document.getElementById('register-section').classList.remove('hidden');
+        document.getElementById('customer-info').classList.add('hidden');
+        document.getElementById('reg-phone').value = phone;
+        showToast('ลูกค้าใหม่! กรุณาลงทะเบียน');
+      }
+    }
+
+    async function claimReward() {
+      if (!currentCustomer) return;
+
+      const updated = { ...currentCustomer };
+      updated.free_reward = `claimed_${new Date().toISOString()}`;
+      updated.last_updated = new Date().toISOString();
+
+      const result = await window.dataSdk.update(updated);
+      if (result.isOk) {
+        showToast('🎉 รับสิทธิ์ฟรีครั้งที่ 10 สำเร็จ!');
+        renderStamps(updated);
+      } else {
+        showToast('เกิดข้อผิดพลาดในการรับสิทธิ์', 'error');
+      }
+    }
+
+    /* ==========================================================
+     *  PDF Export
+     * ========================================================== */
+    async function downloadMemberPDF() {
+      if (!currentCustomer) return;
+      const btn = document.getElementById('btn-pdf');
+      btn.disabled = true;
+      try {
+        const result = await callApi('generateMemberCardPDF', { phone: currentCustomer.phone }, 'POST');
+        showToast('สร้างไฟล์ PDF สำเร็จ!');
+        window.open(result.url, '_blank');
+      } catch (e) {
+        showToast('สร้างไฟล์ PDF ไม่สำเร็จ: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function downloadReportPDF() {
+      const btn = document.getElementById('btn-report-pdf');
+      btn.disabled = true;
+      try {
+        const result = await callApi('generateMembersReportPDF', {}, 'POST');
+        showToast('สร้างรายงาน PDF สำเร็จ!');
+        window.open(result.url, '_blank');
+      } catch (e) {
+        showToast('สร้างรายงาน PDF ไม่สำเร็จ: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    /* ==========================================================
+     *  Admin: delete member
+     * ========================================================== */
+    async function removeMember(phone) {
+      if (!confirm('ยืนยันการลบสมาชิกรายนี้? การลบไม่สามารถย้อนกลับได้')) return;
+      const result = await window.dataSdk.remove(phone);
+      if (result.isOk) {
+        showToast('ลบสมาชิกสำเร็จ');
+        if (currentCustomer && currentCustomer.phone === phone) {
+          currentCustomer = null;
+          document.getElementById('customer-info').classList.add('hidden');
+        }
+      } else {
+        showToast('ลบสมาชิกไม่สำเร็จ', 'error');
+      }
+    }
+
+    /* ==========================================================
+     *  Dashboard
+     * ========================================================== */
+    function updateDashboard() {
+      document.getElementById('stat-members').textContent = allData.length;
+      document.getElementById('stat-members-2').textContent = allData.length;
+
+      let totalStamps = 0;
+      let rewards = 0;
+      let activeMembers = 0;
+
+      allData.forEach(r => {
+        const stamps = getStampCount(r);
+        totalStamps += stamps;
+        if (r.free_reward && r.free_reward.startsWith('claimed')) rewards++;
+        if (stamps > 0) activeMembers++;
+      });
+
+      document.getElementById('stat-stamps').textContent = totalStamps;
+      document.getElementById('stat-rewards').textContent = rewards;
+      document.getElementById('stat-active').textContent = activeMembers;
+
+      const list = document.getElementById('member-list');
+      list.innerHTML = '';
+
+      allData.sort((a, b) => {
+        const aStamps = getStampCount(a);
+        const bStamps = getStampCount(b);
+        return bStamps - aStamps || new Date(b.last_updated) - new Date(a.last_updated);
+      });
+
+      allData.forEach(r => {
+        const stamps = getStampCount(r);
+        const div = document.createElement('div');
+        div.className = 'member-card p-4 bg-white/80 rounded-lg';
+
+        const claimed = r.free_reward && r.free_reward.startsWith('claimed');
+        const rewardBadge = stamps >= 9 && !claimed ?
+          '<span class="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">พร้อมรับรางวัล</span>' :
+          (claimed ?
+          '<span class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">รับแล้ว</span>' : '');
+
+        div.innerHTML = `
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <span class="font-semibold text-gray-800">${r.customer_name}</span>
+              <span class="text-sm text-gray-500 ml-2">${r.phone}</span>
+              ${rewardBadge}
+            </div>
+            <div class="text-right">
+              <div class="text-sm font-bold text-[var(--primary)]">${stamps}/9</div>
+              <div class="text-xs text-gray-500">${new Date(r.last_updated).toLocaleDateString('th-TH', { year: '2-digit', month: 'short', day: 'numeric' })}</div>
+            </div>
+          </div>
+          <div class="h-1.5 bg-gray-200 rounded-full mb-2">
+            <div class="h-1.5 rounded-full bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)]" style="width: ${(stamps/9)*100}%"></div>
+          </div>
+          <div class="flex justify-end gap-2">
+            <button onclick="displayCustomer(allData.find(x=>x.phone==='${r.phone}')); showTab('customer');" class="text-xs text-[var(--primary)] hover:underline flex items-center gap-1">
+              <i class="bx bx-show"></i> ดูรายละเอียด
+            </button>
+            <button onclick="removeMember('${r.phone}')" class="text-xs text-red-500 hover:underline flex items-center gap-1">
+              <i class="bx bx-trash"></i> ลบ
+            </button>
+          </div>
+        `;
+
+        list.appendChild(div);
+      });
+    }
+
+    /* ==========================================================
+     *  Init + event bindings
+     * ========================================================== */
+    const dataHandler = {
+      onDataChanged(data) {
+        allData = data;
+        if (currentCustomer) {
+          const updated = data.find(r => r.phone === currentCustomer.phone);
+          if (updated) { currentCustomer = updated; displayCustomer(updated); }
+        }
+        if (!document.getElementById('panel-admin').classList.contains('hidden')) {
+          updateDashboard();
+        }
+      }
+    };
+
+    (async () => {
+      if (isInAppBrowser()) showInAppBrowserBanner();
+      setStatus('', 'กำลังเชื่อมต่อฐานข้อมูล...');
+      const r = await window.dataSdk.init(dataHandler);
+      if (!r.isOk) showToast('ไม่สามารถเชื่อมต่อระบบได้: ' + (r.error && r.error.message ? r.error.message : ''), 'error');
+    })();
+
+    document.getElementById('register-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const name = document.getElementById('reg-name').value.trim();
+      const phone = document.getElementById('reg-phone').value.trim();
+
+      if (!name || !phone) {
+        showToast('กรุณากรอกข้อมูลให้ครบถ้วน', 'error');
+        return;
+      }
+
+      if (allData.length >= 999) {
+        showToast('ถึงจำนวนสมาชิกสูงสุดแล้ว', 'error');
+        return;
+      }
+
+      if (allData.find(r => r.phone === phone)) {
+        showToast('เบอร์นี้ลงทะเบียนแล้ว', 'error');
+        return;
+      }
+
+      const id = 'C' + Date.now().toString(36).toUpperCase();
+      const result = await window.dataSdk.create({
+        customer_id: id,
+        customer_name: name,
+        phone: phone,
+        stamp_1: '1',
+        stamp_2: '',
+        stamp_3: '',
+        stamp_4: '',
+        stamp_5: '',
+        stamp_6: '',
+        stamp_7: '',
+        stamp_8: '',
+        stamp_9: '',
+        free_reward: '',
+        total_stamps: 1,
+        last_updated: new Date().toISOString()
+      });
+
+      if (result.isOk) {
+        showToast('ลงทะเบียนสำเร็จ & เก็บแต้มแรกแล้ว!');
+        document.getElementById('register-form').reset();
+        document.getElementById('register-section').classList.add('hidden');
+        const created = allData.find(r => r.phone === phone);
+        if (created) displayCustomer(created);
+      } else {
+        showToast('เกิดข้อผิดพลาดในการลงทะเบียน', 'error');
+      }
+    });
+
+    document.getElementById('search-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const phone = document.getElementById('search-input').value.trim();
+      if (!phone) return;
+
+      const found = allData.find(r => r.phone === phone || r.customer_id === phone);
+      if (found) {
+        displayCustomer(found);
+      } else {
+        showToast('ไม่พบสมาชิก - สแกน QR เพื่อลงทะเบียนใหม่', 'error');
+        document.getElementById('customer-info').classList.add('hidden');
+      }
+    });
+  </script>
+
+  <!-- Floating action button for quick access -->
+  <div class="fixed bottom-6 right-6 z-40">
+    <button onclick="toggleScanner()" class="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] text-white shadow-lg flex items-center justify-center transition-all hover:shadow-xl hover:-translate-y-1">
+      <i class="bx bx-qr-scan text-2xl"></i>
+    </button>
+  </div>
+
+  <!-- Coffee cup decorative elements -->
+  <div class="fixed bottom-4 left-4 z-0 opacity-30">
+    <img src="https://lh3.googleusercontent.com/d/1uasgFgkER-ja4wgiEMJYvNxigMySlgt7" alt="coffee decor" class="w-12 h-12">
+  </div>
+</body>
+</html>
