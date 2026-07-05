@@ -516,6 +516,34 @@
     </div>
   </div>
 
+  <!-- คูปองส่วนลด QR: เด้งขึ้นให้ลูกค้าตอนกดรับสิทธิ์ฟรีครั้งที่ 10 -->
+  <div id="coupon-modal" class="modal-overlay hidden no-print">
+    <div class="modal-card">
+      <button onclick="closeCouponModal()" class="modal-close" aria-label="ปิด">
+        <i class="bx bx-x"></i>
+      </button>
+
+      <div class="modal-icon-stack">
+        <div class="modal-icon-circle" style="background:linear-gradient(135deg,var(--warning),#fbbf24);">
+          <i class="bx bx-gift"></i>
+        </div>
+      </div>
+
+      <h3 class="modal-title">🎉 คูปองส่วนลดของคุณ</h3>
+      <p class="modal-desc">ยื่น QR นี้ให้พนักงานตอนชำระเงิน ใช้ได้ครั้งเดียวเท่านั้น</p>
+
+      <div class="flex justify-center mb-3">
+        <img id="coupon-qr-img" src="" alt="Coupon QR" width="200" height="200" style="border-radius:12px;border:2px solid #e2e8f0;">
+      </div>
+      <p class="text-2xl font-bold tracking-widest text-center mb-1" id="coupon-code-text" style="color:var(--primary);"></p>
+      <p class="text-xs text-gray-400 text-center mb-4">รหัสคูปองสำรอง หากสแกนไม่ได้ให้แจ้งรหัสนี้กับพนักงาน</p>
+
+      <button onclick="closeCouponModal()" class="btn-primary modal-cta-btn">
+        <i class="bx bx-check text-xl"></i> รับทราบ
+      </button>
+    </div>
+  </div>
+
   <header class="text-center mb-8 relative">
     <div class="max-w-2xl mx-auto">
       <div class="w-24 h-24 bg-white/90 rounded-full flex items-center justify-center mx-auto mb-4 shadow-md">
@@ -699,6 +727,34 @@
           <div class="text-3xl font-bold text-green-500" id="stat-active">0</div>
           <p class="text-gray-600 text-sm mt-1">สมาชิกแอคทีฟ</p>
         </div>
+      </div>
+
+      <!-- Coupon Redemption -->
+      <div class="glass-card p-6">
+        <div class="text-center mb-4">
+          <div class="w-14 h-14 bg-gradient-to-br from-[var(--warning)] to-yellow-400 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i class="bx bx-purchase-tag text-white text-2xl"></i>
+          </div>
+          <h3 class="text-xl font-bold text-gray-800">แลกคูปองส่วนลด</h3>
+          <p class="text-gray-600 text-sm">สแกน QR จากมือถือลูกค้า หรือพิมพ์รหัสด้วยมือ</p>
+        </div>
+
+        <div class="qr-scanner-container mb-4" style="max-width:220px;">
+          <div id="admin-scanner-container" class="hidden w-full h-full"></div>
+        </div>
+
+        <button id="admin-scanner-btn" onclick="toggleAdminScanner()" class="btn-primary w-full py-2.5 rounded-lg font-semibold shadow-lg transition-all flex items-center justify-center gap-2 mb-4">
+          <i class="bx bx-qr-scan text-xl"></i>
+          <span id="admin-scanner-btn-text">สแกน QR คูปอง</span>
+        </button>
+
+        <form id="coupon-redeem-form" class="flex gap-2">
+          <input id="coupon-code-input" type="text" placeholder="หรือพิมพ์รหัสคูปอง เช่น 482913"
+                 class="flex-1 px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-[var(--primary)] focus:outline-none transition">
+          <button type="submit" class="btn-warning px-5 py-2.5 rounded-lg font-semibold shadow-lg whitespace-nowrap">
+            <i class="bx bx-check-double"></i> แลกคูปอง
+          </button>
+        </form>
       </div>
 
       <!-- Member List -->
@@ -1111,6 +1167,92 @@
       }
     }
 
+    /* ==========================================================
+     *  Admin: coupon redemption scanner (แยกจากสแกนเนอร์ลูกค้า)
+     * ========================================================== */
+    let adminScannerActive = false;
+    let adminHtml5QrCode = null;
+
+    async function toggleAdminScanner() {
+      const container = document.getElementById('admin-scanner-container');
+      const btnText = document.getElementById('admin-scanner-btn-text');
+      const btn = document.getElementById('admin-scanner-btn');
+
+      if (adminScannerActive) {
+        stopAdminScanner();
+        return;
+      }
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast('เบราว์เซอร์นี้ไม่รองรับการเข้าถึงกล้อง (ต้องเปิดผ่าน HTTPS)', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      try {
+        const testStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        testStream.getTracks().forEach(t => t.stop());
+      } catch (permErr) {
+        btn.disabled = false;
+        if (/NotAllowedError|Permission/i.test(permErr.name || '')) {
+          showInAppBrowserBanner();
+        } else {
+          showToast('ไม่สามารถขอสิทธิ์กล้องได้: ' + (permErr.message || permErr), 'error');
+        }
+        return;
+      }
+      btn.disabled = false;
+
+      container.classList.remove('hidden');
+      adminHtml5QrCode = new Html5Qrcode('admin-scanner-container');
+
+      adminHtml5QrCode.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 220, height: 220 } },
+        onAdminQrSuccess,
+        () => { /* เฟรมที่ยังหา QR ไม่เจอ - ปกติ ไม่ต้องแจ้งเตือน */ }
+      ).then(() => {
+        adminScannerActive = true;
+        btnText.textContent = 'ปิดสแกนเนอร์';
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-danger');
+      }).catch((err) => {
+        container.classList.add('hidden');
+        showToast('ไม่สามารถเปิดกล้องได้: ' + ((err && err.message) ? err.message : String(err)), 'error');
+      });
+    }
+
+    function stopAdminScanner() {
+      if (adminHtml5QrCode && adminScannerActive) {
+        adminHtml5QrCode.stop().then(() => {
+          document.getElementById('admin-scanner-container').classList.add('hidden');
+          adminScannerActive = false;
+          document.getElementById('admin-scanner-btn-text').textContent = 'สแกน QR คูปอง';
+          const btn = document.getElementById('admin-scanner-btn');
+          btn.classList.remove('btn-danger');
+          btn.classList.add('btn-primary');
+        });
+      }
+    }
+
+    function onAdminQrSuccess(decodedText) {
+      stopAdminScanner();
+      const trimmed = decodedText.trim();
+      const code = trimmed.startsWith('COUPON:') ? trimmed.slice('COUPON:'.length) : trimmed;
+      redeemCouponByCode(code);
+    }
+
+    async function redeemCouponByCode(code) {
+      if (!code) return;
+      try {
+        const result = await callApi('redeemCoupon', { code }, 'POST');
+        showToast(`✅ แลกคูปอง ${result.code} สำเร็จ!`);
+        document.getElementById('coupon-code-input').value = '';
+      } catch (e) {
+        showToast('แลกคูปองไม่สำเร็จ: ' + e.message, 'error');
+      }
+    }
+
     function handleCustomerScan(phone) {
       const found = allData.find(r => r.phone === phone);
       if (found) {
@@ -1135,9 +1277,31 @@
       if (result.isOk) {
         showToast('🎉 รับสิทธิ์ฟรีครั้งที่ 10 สำเร็จ!');
         renderStamps(updated);
+
+        // ออกคูปองส่วนลด QR ให้ลูกค้าโดยอัตโนมัติ
+        try {
+          const coupon = await callApi('createCoupon', { phone: currentCustomer.phone }, 'POST');
+          showCouponModal(coupon.code);
+        } catch (e) {
+          showToast('รับสิทธิ์สำเร็จ แต่ออกคูปองไม่สำเร็จ: ' + e.message, 'error');
+        }
       } else {
         showToast('เกิดข้อผิดพลาดในการรับสิทธิ์', 'error');
       }
+    }
+
+    /* ==========================================================
+     *  Coupon QR modal (ลูกค้าดูตอนได้คูปอง)
+     * ========================================================== */
+    function showCouponModal(code) {
+      const qrUrl = 'https://quickchart.io/qr?text=' + encodeURIComponent('COUPON:' + code) + '&size=220&margin=1';
+      document.getElementById('coupon-qr-img').src = qrUrl;
+      document.getElementById('coupon-code-text').textContent = code;
+      document.getElementById('coupon-modal').classList.remove('hidden');
+    }
+
+    function closeCouponModal() {
+      document.getElementById('coupon-modal').classList.add('hidden');
     }
 
     /* ==========================================================
@@ -1331,6 +1495,13 @@
       } else {
         showToast('เกิดข้อผิดพลาดในการลงทะเบียน', 'error');
       }
+    });
+
+    document.getElementById('coupon-redeem-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const code = document.getElementById('coupon-code-input').value.trim();
+      if (!code) return;
+      redeemCouponByCode(code);
     });
 
     document.getElementById('search-form').addEventListener('submit', e => {
