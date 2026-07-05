@@ -645,6 +645,16 @@
           </div>
         </div>
 
+        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 mb-6" id="member-qr-box">
+          <h4 class="text-center font-semibold text-gray-700 mb-3 flex items-center justify-center">
+            <i class="bx bx-qrcode mr-2 text-[var(--primary)]"></i> QR สมาชิกของคุณ
+          </h4>
+          <p class="text-center text-xs text-gray-500 mb-3">ยื่นหน้าจอนี้ให้พนักงานสแกนเพื่อเก็บแต้ม</p>
+          <div class="flex justify-center">
+            <img id="member-qr-img" src="" alt="Member QR" width="160" height="160" style="border-radius:12px;border:2px solid #e2e8f0;">
+          </div>
+        </div>
+
         <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 mb-6">
           <h4 class="text-center font-semibold text-gray-700 mb-4 flex items-center justify-center">
             <i class="bx bx-gift mr-2 text-[var(--primary)]"></i> บัตรสะสมแต้มของคุณ
@@ -729,6 +739,21 @@
         </div>
       </div>
 
+      <!-- Poster QR: ป้าย QR หน้าร้าน ให้ลูกค้าสแกนด้วยมือถือตัวเอง -->
+      <div class="glass-card p-6">
+        <div class="text-center mb-4">
+          <div class="w-14 h-14 bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] rounded-full flex items-center justify-center mx-auto mb-3">
+            <i class="bx bx-store text-white text-2xl"></i>
+          </div>
+          <h3 class="text-xl font-bold text-gray-800">ป้าย QR หน้าร้าน</h3>
+          <p class="text-gray-600 text-sm">ให้ลูกค้าสแกนด้วยกล้องมือถือตัวเอง (ไม่ใช่สแกนเนอร์ในแอป) เพื่อเปิดหน้านี้แล้วค้นหา/ลงทะเบียนตัวเอง</p>
+        </div>
+        <div class="flex justify-center mb-3">
+          <img id="shop-poster-qr-img" src="" alt="Shop QR" width="200" height="200" style="border-radius:12px;border:2px solid #e2e8f0;">
+        </div>
+        <p class="text-xs text-gray-400 text-center mb-4">คลิกขวาที่รูป > บันทึกรูปภาพ แล้วนำไปพิมพ์ติดหน้าร้านได้เลย</p>
+      </div>
+
       <!-- Coupon Redemption -->
       <div class="glass-card p-6">
         <div class="text-center mb-4">
@@ -782,8 +807,6 @@
     let currentCustomer = null;
     let scannerActive = false;
     let html5QrCode = null;
-
-    const SHOP_QR_VALUE = 'LOYALTY_SHOP_STAMP';
 
     /* ==========================================================
      *  In-app browser detection (Telegram / LINE / Facebook / Instagram)
@@ -974,7 +997,13 @@
       document.getElementById('tab-customer').className = `flex-1 py-3 px-4 rounded-lg font-medium transition-all ${tab === 'customer' ? 'tab-active' : 'tab-inactive'}`;
       document.getElementById('tab-admin').className = `flex-1 py-3 px-4 rounded-lg font-medium transition-all ${tab === 'admin' ? 'tab-active' : 'tab-inactive'}`;
 
-      if (tab === 'admin') updateDashboard();
+      if (tab === 'admin') {
+        updateDashboard();
+        // ป้าย QR หน้าร้าน: เข้ารหัสเป็น URL ของหน้านี้เอง จะถูกต้องเสมอไม่ว่าจะ deploy โดเมนไหน
+        const shopUrl = window.location.origin + window.location.pathname;
+        document.getElementById('shop-poster-qr-img').src =
+          'https://quickchart.io/qr?text=' + encodeURIComponent(shopUrl) + '&size=200&margin=1';
+      }
     }
 
     /* ==========================================================
@@ -1029,6 +1058,8 @@
       currentCustomer = record;
       document.getElementById('cust-name').textContent = record.customer_name;
       document.getElementById('cust-phone').textContent = record.phone;
+      document.getElementById('member-qr-img').src =
+        'https://quickchart.io/qr?text=' + encodeURIComponent(record.phone) + '&size=160&margin=1';
       document.getElementById('customer-info').classList.remove('hidden');
       document.getElementById('register-section').classList.add('hidden');
       renderStamps(record);
@@ -1150,21 +1181,8 @@
     function onQrCodeSuccess(decodedText) {
       stopScanner();
       const trimmed = decodedText.trim();
-
-      if (trimmed === SHOP_QR_VALUE || trimmed.startsWith('LOYALTY')) {
-        const phoneInput = document.getElementById('search-input');
-        const phone = phoneInput.value.trim();
-
-        if (phone) {
-          handleCustomerScan(phone);
-        } else {
-          document.getElementById('register-section').classList.remove('hidden');
-          document.getElementById('customer-info').classList.add('hidden');
-          showToast('สแกนสำเร็จ! กรุณาลงทะเบียนหรือกรอกเบอร์โทร');
-        }
-      } else {
-        handleCustomerScan(trimmed);
-      }
+      // QR ที่พนักงานสแกน (จากบัตรสมาชิก/หน้าจอ QR ของลูกค้า) เข้ารหัสเป็นเบอร์โทรโดยตรง
+      handleCustomerScan(trimmed);
     }
 
     /* ==========================================================
@@ -1513,8 +1531,10 @@
       if (found) {
         displayCustomer(found);
       } else {
-        showToast('ไม่พบสมาชิก - สแกน QR เพื่อลงทะเบียนใหม่', 'error');
         document.getElementById('customer-info').classList.add('hidden');
+        document.getElementById('register-section').classList.remove('hidden');
+        document.getElementById('reg-phone').value = phone;
+        showToast('ยังไม่พบเบอร์นี้ในระบบ กรุณากรอกชื่อเพื่อลงทะเบียนใหม่');
       }
     });
   </script>
