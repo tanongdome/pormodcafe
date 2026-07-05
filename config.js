@@ -8,5 +8,5 @@
  *************************************************************/
 window.APP_CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbzoDI7xUYVr3r5X0aLzm0rPErIEDxbsgPJvigZFCV6R88db5CgO5dBOzj-bvRIibgxAqw/exec',
-  API_KEY: '' // ใส่ค่าเดียวกับ Script Property "API_KEY" ถ้ามี
+  API_KEY: 'pormod-2026-xyz' // ใส่ค่าเดียวกับ Script Property "API_KEY" ถ้ามี
 };
